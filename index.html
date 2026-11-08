@@ -331,7 +331,7 @@ input.q{width:100%;font:inherit;font-size:16px;border-radius:14px;border:2px sol
 
 <script>
 /* ============ ตั้งค่า: แก้ 2 บรรทัดนี้ ============ */
-window.HBLY_API_URL = "วางลิงก์เว็บแอปที่ลงท้ายด้วย /exec ตรงนี้";
+window.HBLY_API_URL = "https://script.google.com/macros/s/AKfycbyWSgau7sV_y_404rbxdIJO0r6EEFOOrxAqjJxpOJ0Ab0iu7hB1CVElASU_KaQ8E_2WTQ/exec";
 window.HBLY_API_KEY = "";   /* ใส่ให้ตรงกับ API_KEY ในชีต Settings (ถ้าตั้งไว้) */
 /* ================================================= */
 </script>
@@ -394,7 +394,7 @@ function api(fn,...args){return new Promise((res,rej)=>{
     fetch(EXT_API,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify({fn,args,key:window.HBLY_API_KEY||""}),signal:ctl.signal,redirect:"follow"})
       .then(r=>r.text()).then(t=>{clearTimeout(to);let o;try{o=JSON.parse(t)}catch(e){return rej(new Error("เซิร์ฟเวอร์ตอบกลับผิดรูปแบบ — ตรวจว่า Deploy แบบ 'ทุกคน' และลิงก์ลงท้าย /exec"))}o.ok?res(o.data):rej(new Error(o.error))})
       .catch(e=>{clearTimeout(to);rej(new Error(e.name==="AbortError"?"เซิร์ฟเวอร์ไม่ตอบกลับ":"เชื่อมต่อเซิร์ฟเวอร์ไม่ได้ ("+e.message+")"))});return}
-  if(!IN_GAS){blog("ไม่พบ google.script.run (เปิดนอก Apps Script)");return DEMO(fn,args).then(res,rej)}
+  if(!IN_GAS){blog("ไม่พบ google.script.run (เปิดนอก Apps Script)");if(typeof window.HBLY_API_URL==="string")return rej(new Error("ยังไม่ได้ใส่ลิงก์ /exec ในไฟล์ index.html (บรรทัด window.HBLY_API_URL)"));return DEMO(fn,args).then(res,rej)}
   const lim=fn==="getImages"||fn==="savePdf"?180000:fn==="getInit"?25000:60000;
   const to=setTimeout(()=>rej(new Error("เซิร์ฟเวอร์ไม่ตอบกลับภายใน "+lim/1000+" วินาที")),lim);
   google.script.run
