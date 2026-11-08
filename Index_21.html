@@ -330,6 +330,12 @@ input.q{width:100%;font:inherit;font-size:16px;border-radius:14px;border:2px sol
 <div style="max-width:420px"><b style="font-size:20px;color:#D9541A">ไฟล์นี้ต้องเปิดผ่านลิงก์ Web App</b><p style="font-size:15px;line-height:1.6;color:#2A2530">นี่คือไฟล์โค้ด ยังใช้งานตรงนี้ไม่ได้<br>ให้วางไฟล์นี้ใน Google Apps Script (ชื่อไฟล์ Index) แล้วกด<br><b>การทำให้ใช้งานได้ → เว็บแอป</b><br>จากนั้นเปิด <b>URL เว็บแอป</b> ที่ได้ในมือถือหรือเบราว์เซอร์</p></div></div>
 
 <script>
+/* ============ ตั้งค่า: แก้ 2 บรรทัดนี้ ============ */
+window.HBLY_API_URL = "วางลิงก์เว็บแอปที่ลงท้ายด้วย /exec ตรงนี้";
+window.HBLY_API_KEY = "";   /* ใส่ให้ตรงกับ API_KEY ในชีต Settings (ถ้าตั้งไว้) */
+/* ================================================= */
+</script>
+<script>
 var BOOTERR=[];
 window.onerror=function(m,src,l,c){BOOTERR.push(m+" (บรรทัด "+l+":"+c+")");};
 document.addEventListener("DOMContentLoaded",function(){
