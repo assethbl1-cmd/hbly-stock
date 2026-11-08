@@ -4,7 +4,7 @@
 <base target="_top">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>HBLY Stock Check v9</title>
+<title>HBLY Stock Check v11</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;500;600&family=IBM+Plex+Sans+Thai:wght@400;500;600;700&display=swap" media="print" onload="this.media='all'">
 <style>
@@ -341,7 +341,7 @@ window.onerror=function(m,src,l,c){BOOTERR.push(m+" (บรรทัด "+l+":"+
 document.addEventListener("DOMContentLoaded",function(){
   if(window.APP_OK)return;
   var n=document.getElementById("nojs");if(!n)return;
-  n.innerHTML='<div style="max-width:460px"><b style="font-size:20px;color:#D93838">แอปเริ่มทำงานไม่ได้</b> <span style="font-size:12px;color:#7C6F66">[v9]</span>'+
+  n.innerHTML='<div style="max-width:460px"><b style="font-size:20px;color:#D93838">แอปเริ่มทำงานไม่ได้</b> <span style="font-size:12px;color:#7C6F66">[v11]</span>'+
    '<p style="font-size:15px;line-height:1.6">'+(BOOTERR.length?"เบราว์เซอร์รันโค้ดไม่ได้ (เบราว์เซอร์อาจเก่าเกินไป ลองอัปเดต Chrome หรือเปิดในมือถือ)":"สคริปต์ไม่ทำงาน — ถ้าเปิดไฟล์ตรงๆ ให้เปิดผ่านลิงก์ Web App (/exec) แทน")+'</p>'+
    '<pre style="text-align:left;font-size:12px;background:#fff;border:1px solid #EBDDD0;border-radius:8px;padding:8px;white-space:pre-wrap">'+
    (BOOTERR.join("\n")||"-")+"\n\n"+navigator.userAgent+'</pre></div>';
@@ -350,7 +350,7 @@ document.addEventListener("DOMContentLoaded",function(){
 <script>
 window.APP_OK=true;
 /* ================= ตัวช่วยแก้ปัญหา (ทำงานก่อนส่วนอื่น) ================= */
-const APP_VER="v9";const BOOT=[];
+const APP_VER="v11";const BOOT=[];
 function blog(m){BOOT.push(((Date.now()-performance.timing.navigationStart)/1000).toFixed(1)+"s "+m)}
 blog("เริ่มสคริปต์");document.addEventListener("DOMContentLoaded",()=>{const n=document.getElementById("nojs");if(n)n.remove()});
 window.addEventListener("error",e=>{blog("JS error: "+e.message+" @"+(e.lineno||""));bootFail("สคริปต์ผิดพลาด: "+e.message)});
@@ -673,13 +673,29 @@ async function openScan(){
   $("scanModal").classList.add("on");$("scanMsg").textContent="กำลังเปิดกล้อง…";scanBusy=false;
   try{const formats=await scanLib();
     qr=new Html5Qrcode("reader",{formatsToSupport:formats,verbose:false,experimentalFeatures:{useBarCodeDetectorIfSupported:true}});
-    await qr.start({facingMode:"environment"},{fps:12,qrbox:(w,h)=>({width:Math.floor(Math.min(w*0.9,340)),height:Math.floor(Math.min(h*0.45,150))}),aspectRatio:1.333},onScan,()=>{});
-    scanning=true;$("scanMsg").textContent="เล็งกล้องให้บาร์โค้ดอยู่ในกรอบ";
+    await qr.start({facingMode:"environment"},{fps:15,qrbox:(w,h)=>({width:Math.floor(w*0.92),height:Math.floor(Math.min(h*0.5,260))}),
+      videoConstraints:{facingMode:{ideal:"environment"},width:{ideal:1920},height:{ideal:1080},advanced:[{focusMode:"continuous"}]}},onScan,()=>{});
+    scanning=true;$("scanMsg").innerHTML="เล็งให้บาร์โค้ดอยู่ในกรอบ · ถือห่างประมาณ 10–15 ซม.<br><b>ถ้าไม่ขึ้น แตะที่ภาพกล้องเพื่ออ่านภาพนี้</b>";
+    startDeep();
   }catch(e){scanning=false;const m=String(e&&e.message||e);
     const why=/NotAllowed|Permission/i.test(m)?"ยังไม่ได้อนุญาตให้ใช้กล้อง (กดอนุญาตในเบราว์เซอร์)":/NotFound|device/i.test(m)?"ไม่พบกล้องในเครื่องนี้":/policy|secure|https/i.test(m)?"หน้านี้เปิดกล้องสดไม่ได้":"เปิดกล้องไม่ได้";
     $("scanMsg").innerHTML=why+"<br><b>กดปุ่มด้านล่างเพื่อถ่ายรูปบาร์โค้ดแทน</b>"}
 }
-async function closeScan(){if(qr&&scanning){try{await qr.stop()}catch(e){}}scanning=false;try{qr&&qr.clear()}catch(e){}qr=null;$("scanModal").classList.remove("on")}
+
+/* อ่านภาพจากกล้องแบบความละเอียดเต็ม (ช่วยบาร์โค้ดเล็ก) — ทำอัตโนมัติทุก ~2 วินาที และเมื่อแตะภาพ */
+let deepT=null,deepBusy=false;
+function grabFrame(){const v=document.querySelector("#reader video");if(!v||!v.videoWidth)return null;const c=document.createElement("canvas");c.width=v.videoWidth;c.height=v.videoHeight;c.getContext("2d").drawImage(v,0,0);return c}
+async function deepOnce(full){if(deepBusy||!scanning)return;const c=grabFrame();if(!c)return;deepBusy=true;
+  try{const blob=await new Promise(r=>c.toBlob(r,"image/jpeg",.95));const f=new File([blob],"frame.jpg",{type:"image/jpeg"});
+    const formats=await scanLib();const q3=new Html5Qrcode("reader2",{formatsToSupport:formats,verbose:false});const {im,url}=await loadImg(f);
+    const tries=full?[[2000,0,.5],[2000,0,.7],[1600,0,0],[2400,0,.35],[1600,1,0]]:[[2000,0,.55]];
+    try{for(const [m,r,cr] of tries){if(!scanning)break;try{const v=await variant(im,m,r,cr);const t=await q3.scanFile(v,false);if(t){onScan(t);break}}catch(e){}}}
+    finally{URL.revokeObjectURL(url);try{q3.clear()}catch(e){}}
+    if(full&&scanning)$("scanMsg").innerHTML="ยังอ่านไม่ได้ ลองขยับให้ใกล้ขึ้น / ให้ภาพชัด แล้วแตะอีกครั้ง";}
+  finally{deepBusy=false}}
+function startDeep(){clearInterval(deepT);deepT=setInterval(()=>deepOnce(false),2200)}
+$("reader").addEventListener("click",()=>{if(scanning){$("scanMsg").textContent="กำลังอ่านภาพนี้…";deepOnce(true)}});
+async function closeScan(){clearInterval(deepT);if(qr&&scanning){try{await qr.stop()}catch(e){}}scanning=false;try{qr&&qr.clear()}catch(e){}qr=null;$("scanModal").classList.remove("on")}
 function onScan(text){if(scanBusy)return;scanBusy=true;try{navigator.vibrate&&navigator.vibrate(80)}catch(e){}closeScan().then(()=>gotCode(text))}
 /* ใน Apps Script เปิดกล้องสดไม่ได้ → ใช้ถ่ายรูป · ถ้าเปิดจากเว็บอื่น (เช่น GitHub) → สแกนสดได้ */
 $("scanBtn").addEventListener("click",e=>{if(!S.branch){e.preventDefault();toast("กรุณาเลือกสาขาก่อน");return}
@@ -707,9 +723,11 @@ $("scanFile").addEventListener("change",async e=>{const f=e.target.files[0];e.ta
   try{if(qr&&scanning){try{await qr.stop()}catch(er){}scanning=false}
     const t=await decodePhoto(f);await closeScan();gotCode(t)}
   catch(er){$("scanMsg").textContent="อ่านบาร์โค้ดจากรูปไม่ได้ ลองถ่ายใหม่ให้ชัดและใกล้ขึ้น"}});
-function findCode(code){code=String(code||"").trim();if(!code)return null;const lc=code.toLowerCase();
+function cleanCode(c){/* ตัดรหัสนำหน้าที่เครื่องอ่านบางรุ่นใส่มา เช่น ]C1 ]E0 ]A0 และตัวอักษรควบคุม */
+  return String(c||"").replace(/[\u0000-\u001f\u007f]/g,"").trim().replace(/^\][A-Za-z][0-9A-Za-z]/,"").trim()}
+function findCode(code){code=cleanCode(code);if(!code)return null;const lc=code.toLowerCase();
   return S.items.find(i=>i.bc===code)||S.items.find(i=>i.sku&&i.sku.toLowerCase()===lc)||S.items.find(i=>i.bc&&i.bc.replace(/^0+/,"")===code.replace(/^0+/,""))||null}
-function gotCode(code){code=String(code||"").trim();$("nf").innerHTML="";
+function gotCode(code){code=cleanCode(code);$("nf").innerHTML="";
   const it=findCode(code);
   if(S.view!=="count")show("count");
   if(it){S.q=it.bc;$("q").value=it.bc;S.cat="all";S.st="all";renderChips();renderList();
